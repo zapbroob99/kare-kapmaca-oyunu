@@ -1,7 +1,7 @@
 # Kare-Kapmaca-Oyunu
 Üniversitedeki dersimiz için bir arkadaşımla ortak olarak geliştirdiğimiz ufak bir oyun.
 
-GENEL BİLGİLER
+GENEL BİLGİLER:
 Kare Kapan oyunu 2 kişi ile oynanan bir strateji oyunudur. Oyun alanında, 7 yatay ve 8 dikey
 çizginin oluşturduğu 42 adet kare bulunmaktadır. Oyun, 28 beyaz ve 28 siyah taş ile oynanır.
 Oyunun amacı rakibin taş sayısını 3’e indirmektir.
