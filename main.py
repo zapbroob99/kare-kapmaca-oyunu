@@ -1,3 +1,11 @@
+import threading
+import time
+
+import AIPlayer
+import game_gui
+import tkinter
+
+
 def start_game():
     # Takes row number from the player, checks and returns it.
     row_number = input("Please enter the number of horizontal lines [3,7]:")
@@ -74,9 +82,12 @@ def check_space(pieces):
 def check_specific_space(pieces, selection):
     # Takes the list of pieces and the selected point as parameters. Returns which piece a selected point belongs to
     # or is empty.
-    x = int(selection[0])
-    y = int(selection[1])
-    return pieces[x][y]
+    try:
+        x = int(selection[0])
+        y = int(selection[1])
+        return pieces[x][y]
+    except:
+        pass
 
 
 def set_pieces(row, column):
@@ -103,6 +114,7 @@ def remove_piece(the_piece, pieces):
     y = int(the_piece[1])
     if pieces[x][y] != 0:
         pieces[x][y] = 0
+    return pieces[x][y]
 
 
 def count_squares(pieces, color):
@@ -121,8 +133,14 @@ def count_squares(pieces, color):
 def is_square(pieces, the_piece):
     # Checks if a piece belongs to a square or not.
     check = False
-    x = int(the_piece[0])
-    y = int(the_piece[1])
+    try:
+        x = int(the_piece[0])
+        y = int(the_piece[1])
+
+
+    except:
+        pass
+
     try:
         if pieces[x][y] == pieces[x][y + 1] == pieces[x + 1][y] == pieces[x + 1][y + 1]:
             check = True
@@ -148,7 +166,14 @@ def is_square(pieces, the_piece):
     return check
 
 
-def draw_board(a_pieces):
+def draw_board(a_pieces, highlight=None):
+    # ANSI escape code for red color
+    RED = '\033[91m'
+    # ANSI escape code to reset color
+    RESET = '\033[0m'
+    # Convert highlight to a tuple of integers if it's not None
+    if highlight is not None:
+        highlight = (int(highlight[0]), int(highlight[1]))
     # Prints the pieces with the coordinates in accordance with the list.
     pieces = list(a_pieces)
     row_number = len(pieces)
@@ -170,11 +195,20 @@ def draw_board(a_pieces):
         if i != 1:
             for element in range(1, column_number + 1):
                 if element == column_number:
-                    print(pieces[i - 2][element - 1], end="", sep='')
+                    if highlight and (i - 2, element - 1) == highlight:
+                        print(RED + f"{pieces[i - 2][element - 1]}" + RESET, end="", sep='')
+                    else:
+                        print(pieces[i - 2][element - 1], end="", sep='')
                 elif element != 1:
-                    print(pieces[i - 2][element - 1], "---", end="", sep='')
+                    if highlight and (i - 2, element - 1) == highlight:
+                        print(RED + f"[{pieces[i - 2][element - 1]}]" + RESET, "---", end="", sep='')
+                    else:
+                        print(pieces[i - 2][element - 1], "---", end="", sep='')
                 else:
-                    print(space, pieces[i - 2][element - 1], "---", end="", sep='')
+                    if highlight and (i - 2, element - 1) == highlight:
+                        print(space + RED + f"[{pieces[i - 2][element - 1]}]" + RESET + "---", end="", sep='')
+                    else:
+                        print(space, pieces[i - 2][element - 1], "---", end="", sep='')
         if i == 1:
             for element in range(1, column_number + 1):
                 if element != 1:
@@ -191,6 +225,7 @@ def draw_board(a_pieces):
         if i == row_number + 1:
             pass
     print("")
+    print("------------------------------------------")
 
 
 def initial_insertion_phase(pieces):
@@ -218,6 +253,36 @@ def initial_insertion_phase(pieces):
             player_turn -= 1
 
 
+def ai_initial_insertion_phase(pieces):
+    # First phase of game.
+    # Players insert their pieces until there's no space left.
+    player_turn = 1
+    while check_space(pieces):
+        if player_turn == 1:
+            selection = input("Select an empty space for your piece (Player One):")
+            selection = input_translation(selection.upper())
+            while check_specific_space(pieces, selection) != 0:
+                selection = input("Select an empty space for your piece (Player One):")
+                selection = input_translation(selection.upper())
+            insert_piece(selection, pieces, "W")
+            player_turn += 1
+
+        else:
+            # AI's turn
+
+            # Assuming you have a function ai_select_move() that returns the AI's move
+            ai_move = AIPlayer.ai_initial_placement(pieces, "B")
+
+            while check_specific_space(pieces, ai_move) != 0:
+                ai_move = AIPlayer.ai_initial_placement(pieces)
+                ai_move = input_translation(ai_move.upper())
+
+            insert_piece(ai_move, pieces, "B")
+
+            player_turn -= 1
+        draw_board(pieces)
+
+
 def is_there_any_piece_to_take(pieces, color):
     can_take = False
     non_square_piece = 0
@@ -230,6 +295,39 @@ def is_there_any_piece_to_take(pieces, color):
     if non_square_piece > 0:
         can_take = True
     return can_take
+
+
+def piece_removal_by_ai(pieces, color="B", piece_amount=1):
+    # Second phase of game.
+    # Players remove opponent's pieces in proportion to the number of squares they have.
+    how_many_removes = piece_amount
+    if color == "W":
+        player = "one"
+        opponent = "B"
+    else:
+        player = "two"
+        opponent = "W"
+    can_take = is_there_any_piece_to_take(pieces, opponent)
+    if not can_take:
+        print(f"Player {player} cant take any piece!")
+    else:
+        if how_many_removes > 0:
+            while 0 < how_many_removes:
+                if how_many_removes == 1:
+                    is_it_plural = "piece"
+                else:
+                    is_it_plural = "pieces"
+                draw_board(pieces)
+                print(f"Player {player} can remove {how_many_removes} {is_it_plural}!")
+                is_it_square = False
+                is_it_opponents = False
+                selection = AIPlayer.ai_piece_removal(pieces, color)
+                remove_piece(selection, pieces)
+                how_many_removes -= 1
+            else:
+                print(f"Player {player} used all of his/her removals!")
+        else:
+            print(f"Player {player} has no square!")
 
 
 def piece_removal_by_player(pieces, color, piece_amount=1):
@@ -282,6 +380,7 @@ def piece_movement(pieces, the_piece, where_to, color):
     # Moves a piece using functions remove_piece() and insert_piece().
     remove_piece(the_piece, pieces)
     insert_piece(where_to, pieces, color)
+    return where_to
 
 
 def pathway_check(pieces, the_piece, where_to):
@@ -349,6 +448,35 @@ def can_move(pieces, the_piece):
     return can_move
 
 
+def ai_gameplay_phase(pieces, color="B"):
+    player = "two"
+    possible_moves = AIPlayer.phase3_generate_possible_moves(pieces, color)
+    if not possible_moves:
+        print(f"Player {player} has no valid moves. Passing the turn.")
+        return  # Pass the turn
+    available = False
+    movable = False
+    while available == False or movable == False:
+        initial_input = AIPlayer.ai_gameplay_phase(pieces, color)
+        selection, where_to = input_division(initial_input)
+        if check_specific_space(pieces, selection) != color or can_move(pieces, selection) is False:
+            print("Please select your own available pieces!")
+        else:
+            available = True
+        if pathway_check(pieces, selection, where_to) is False:
+            print("Please select a movable space!")
+        else:
+            movable = True
+    piece_movement(pieces, selection, where_to, color)
+    draw_board(pieces, highlight=where_to)  # Highlight the moved piece
+    print(" AI Moved piece")
+    if is_square(pieces, where_to) == True:
+        piece_removal_by_ai(pieces)
+    else:
+        piece_amount = 0
+        piece_removal_by_ai(pieces, color, piece_amount)
+
+
 def gameplay_phase(pieces, color):
     draw_board(pieces)
     if color == "W":
@@ -357,6 +485,10 @@ def gameplay_phase(pieces, color):
         player = "two"
     available = False
     movable = False
+    possible_moves = AIPlayer.phase3_generate_possible_moves(pieces, color)
+    if not possible_moves:
+        print(f"Player {player} has no valid moves. Passing the turn.")
+        return  # Pass the turn
     while available == False or movable == False:
         initial_input = input(f"Please select a piece and a position to move (Player {player}):")
         initial_input = initial_input.upper()
@@ -405,7 +537,7 @@ def stuck_at_start(pieces):
         return False
 
 
-def main():
+def play():
     player_turn = 1
     pieces = set_pieces(*start_game())
     initial_insertion_phase(pieces)
@@ -436,6 +568,46 @@ def main():
             player_turn -= 1
         gameplay_phase(pieces, color)
         white_pieces, black_pieces = how_many_pieces_left(pieces)
+
+    if white_pieces > 3:
+        print("Player one has won with whites!!")
+    else:
+        print("Player two has won with blacks!!")
+
+
+def play_against_ai():
+    player_turn = 1
+    pieces = set_pieces(4, 5)
+
+    ai_initial_insertion_phase(pieces)
+    piece_removal_by_player(pieces, "W", count_squares(pieces, "W"))
+    piece_removal_by_ai(pieces, "B", count_squares(pieces, "B"))
+    if stuck_at_start(pieces) == True:
+        print("Both player got stuck at the beggining. Player one will take first piece.")
+        is_it_opponents = False
+        while is_it_opponents == False:
+            draw_board(pieces)
+            selection = input(f"Please select a piece remove from opponent (Player one):")
+            selection = input_translation(selection.upper())
+            if check_specific_space(pieces, selection) == "W" or check_specific_space(pieces, selection) == 0:
+                is_it_opponents = False
+                print("Selected space doesn't have any piece of opponent's.")
+            else:
+                is_it_opponents = True
+        remove_piece(selection, pieces)
+        player_turn += 1
+    black_pieces = 4
+    white_pieces = 4
+    while black_pieces > 3 and white_pieces > 3:
+        if player_turn == 1:
+            color = "W"
+            player_turn += 1
+            gameplay_phase(pieces, color)
+        else:
+            color = "B"
+            player_turn -= 1
+            ai_gameplay_phase(pieces, color)
+        white_pieces, black_pieces = how_many_pieces_left(pieces)
     draw_board(pieces)
     if white_pieces > 3:
         print("Player one has won with whites!!")
@@ -443,4 +615,9 @@ def main():
         print("Player two has won with blacks!!")
 
 
-main()
+def main():
+    play_against_ai()
+
+
+if __name__ == "__main__":
+    main()
