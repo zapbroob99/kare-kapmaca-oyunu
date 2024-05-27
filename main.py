@@ -278,7 +278,7 @@ def ai_initial_insertion_phase(pieces):
                 ai_move = input_translation(ai_move.upper())
 
             insert_piece(ai_move, pieces, "B")
-
+            print("Computer has insterted piece:")
             player_turn -= 1
         draw_board(pieces)
 
@@ -450,7 +450,7 @@ def can_move(pieces, the_piece):
 
 def ai_gameplay_phase(pieces, color="B"):
     player = "two"
-    possible_moves = AIPlayer.phase3_generate_possible_moves(pieces, color)
+    possible_moves = AIPlayer.move_generate_possible_moves(pieces, color)
     if not possible_moves:
         print(f"Player {player} has no valid moves. Passing the turn.")
         return  # Pass the turn
@@ -485,7 +485,7 @@ def gameplay_phase(pieces, color):
         player = "two"
     available = False
     movable = False
-    possible_moves = AIPlayer.phase3_generate_possible_moves(pieces, color)
+    possible_moves = AIPlayer.move_generate_possible_moves(pieces, color)
     if not possible_moves:
         print(f"Player {player} has no valid moves. Passing the turn.")
         return  # Pass the turn
@@ -576,9 +576,10 @@ def play():
 
 
 def play_against_ai():
+
     player_turn = 1
     pieces = set_pieces(4, 5)
-
+    draw_board(pieces)
     ai_initial_insertion_phase(pieces)
     piece_removal_by_player(pieces, "W", count_squares(pieces, "W"))
     piece_removal_by_ai(pieces, "B", count_squares(pieces, "B"))
