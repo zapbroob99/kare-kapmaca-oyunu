@@ -1,3 +1,4 @@
+import re
 import threading
 import time
 
@@ -252,6 +253,14 @@ def initial_insertion_phase(pieces):
             insert_piece(selection, pieces, "B")
             player_turn -= 1
 
+def get_valid_input_mono():
+    pattern = re.compile(r'^\d+[a-zA-Z]$')
+    while True:
+        user_input = input("Enter the coordinates you want to inser piece (e.g., '4a' or '2b'): ")
+        if pattern.match(user_input):
+            return user_input
+        else:
+            print("Invalid input format. Please enter in the format '4a' or '2b'.")
 
 def ai_initial_insertion_phase(pieces):
     # First phase of game.
@@ -259,11 +268,10 @@ def ai_initial_insertion_phase(pieces):
     player_turn = 1
     while check_space(pieces):
         if player_turn == 1:
-            selection = input("Select an empty space for your piece (Player One):")
-            selection = input_translation(selection.upper())
+
+            selection =input_translation(get_valid_input_mono().upper())
             while check_specific_space(pieces, selection) != 0:
-                selection = input("Select an empty space for your piece (Player One):")
-                selection = input_translation(selection.upper())
+                selection = input_translation(input("Select an empty space for your piece (Player One):").upper())
             insert_piece(selection, pieces, "W")
             player_turn += 1
 
@@ -490,8 +498,8 @@ def gameplay_phase(pieces, color):
         print(f"Player {player} has no valid moves. Passing the turn.")
         return  # Pass the turn
     while available == False or movable == False:
-        initial_input = input(f"Please select a piece and a position to move (Player {player}):")
-        initial_input = initial_input.upper()
+
+        initial_input = get_valid_input().upper()
         selection, where_to = input_division(initial_input)
         if check_specific_space(pieces, selection) != color or can_move(pieces, selection) == False:
             print("Please select your own available pieces!")
@@ -508,7 +516,14 @@ def gameplay_phase(pieces, color):
         piece_amount = 0
         piece_removal_by_player(pieces, color, piece_amount)
 
-
+def get_valid_input():
+    pattern = re.compile(r'^\d+[a-zA-Z]\s+\d+[a-zA-Z]$')
+    while True:
+        user_input = input("Enter the selection and where_to (e.g., '4a 5b'): ")
+        if pattern.match(user_input):
+            return user_input
+        else:
+            print("Invalid input format. Please enter in the format '4a 5b'.")
 def how_many_pieces_left(pieces):
     whites_amount = 0
     blacks_amount = 0
@@ -578,7 +593,7 @@ def play():
 def play_against_ai():
 
     player_turn = 1
-    pieces = set_pieces(4, 5)
+    pieces = set_pieces(5, 6)
     draw_board(pieces)
     ai_initial_insertion_phase(pieces)
     piece_removal_by_player(pieces, "W", count_squares(pieces, "W"))

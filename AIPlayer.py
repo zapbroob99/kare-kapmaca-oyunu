@@ -6,33 +6,48 @@ import main
 
 def evaluate_board(pieces, ai_color, game_phase):
     player_color = "W" if ai_color == "B" else "B"
+
+    # Count the number of squares controlled by each player
     from main import count_squares
-    ai_square_count = count_squares(pieces, ai_color)  #how many black squares
-    player_square_count = count_squares(pieces, player_color) #how many white squares
+    ai_square_count = count_squares(pieces, ai_color)  # Number of squares controlled by AI
+    player_square_count = count_squares(pieces, player_color)  # Number of squares controlled by opponent
 
+    # Calculate center control
+    center_control = 0
+    center_points = [(2, 2), (2, 3), (3, 2), (3, 3)]  # Center points for a 5x6 board
+    for row, col in center_points:
+        if pieces[row][col] == ai_color:
+            center_control += 1
+        elif pieces[row][col] == player_color:
+            center_control -= 1
 
-    board_size = len(pieces)
-    # Determine center points based on board size
-    center_points = [(board_size // 2, board_size // 2),
-                     (board_size // 2 - 1, board_size // 2),
-                     (board_size // 2, board_size // 2 - 1),
-                     (board_size // 2 - 1, board_size // 2 - 1)]
-    center_piece_count = sum(1 for row, col in center_points if pieces[row][col] != 0)
+    # Penalize positions where vulnerable pieces are far from squares controlled by AI
+    vulnerable_penalty = 0
+    for row in range(len(pieces)):
+        for col in range(len(pieces[0])):
+            if pieces[row][col] == ai_color:  # AI's piece
+                # Check if the piece is vulnerable (not part of a square)
+                from main import is_square
+                if not is_square(pieces, (row, col)):
+                    # Calculate the distance to the nearest AI-controlled square
+                    min_distance = float('inf')
+                    for i, j in center_points:
+                        if pieces[i][j] == ai_color:
+                            distance = abs(row - i) + abs(col - j)
+                            min_distance = min(min_distance, distance)
+                    vulnerable_penalty -= min_distance
 
-    count = sum(1 for e in pieces if e)  # Count how many pieces are in pieces
-    if count < 3:
-        return center_piece_count
-
-        # Calculate bonus based on the number of center pieces
-    center_bonus = center_piece_count * 2  # Adjust bonus value as needed
-
-
+    # Evaluate based on game phase
     if game_phase == 1:
-        return ai_square_count - 2 * player_square_count
+        # During initial placement, prioritize center control and minimizing vulnerable pieces' distance to squares
+        return 20* ai_square_count - 30 * player_square_count + center_control + vulnerable_penalty
     elif game_phase == 3:
-        return ai_square_count - player_square_count +center_bonus
+        # During regular gameplay, focus on overall square control and minimizing vulnerable pieces' distance to squares
+        return ai_square_count - player_square_count + center_control + vulnerable_penalty
     else:
-        return ai_square_count - player_square_count +center_bonus
+        # For other game phases, use a similar evaluation as regular gameplay
+        return ai_square_count - player_square_count + center_control + vulnerable_penalty
+
 
 
 def insertion_generate_possible_moves(pieces):
@@ -78,7 +93,8 @@ def minimax(pieces, depth, is_maximizing, ai_color, game_phase, alpha, beta):
         player_color = "W" if ai_color == "B" else "B"
         possible_moves = removal_generate_possible_moves(pieces, player_color)
     else:
-        possible_moves = move_generate_possible_moves(pieces, ai_color if is_maximizing else ("W" if ai_color == "B" else "B"))
+        possible_moves = move_generate_possible_moves(pieces,
+                                                      ai_color if is_maximizing else ("W" if ai_color == "B" else "B"))
 
     if not possible_moves:
         return evaluate_board(pieces, ai_color, game_phase), None
@@ -143,13 +159,16 @@ def minimax(pieces, depth, is_maximizing, ai_color, game_phase, alpha, beta):
                 break
         return min_eval, best_move
 
-def ai_initial_placement(pieces, ai_color, depth=6):
+
+def ai_initial_placement(pieces, ai_color, depth=4):
     _, best_move = minimax(pieces, depth, True, ai_color, 1, float('-inf'), float('inf'))
     return best_move
+
 
 def ai_piece_removal(pieces, ai_color):
     _, best_move = minimax(pieces, 5, True, ai_color, 2, float('-inf'), float('inf'))
     return best_move
+
 
 def convert_move_to_string(start, end):
     start_row, start_col = start
